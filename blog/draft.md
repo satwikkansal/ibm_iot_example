@@ -22,7 +22,7 @@ So it helps to add a layer between devices and cloud where these heterogeneous p
 
 This three-layered architecture can be extended further by dividing roles and responsibilities into different services. For example, this [IoT reference architecture]( https://www.ibm.com/cloud/architecture/architectures/iotArchitecture/reference-architecture ) below by IBM adds Enterprise and User layers into the architecture and depicts various components (services) of each layer. The key thing to note in designing an architecture is that a particular layer/service needs to only engage with those immediately connected to it.
 
-![](/Users/satwik/code/writings/ibm_iot/iot-high-level.svg)
+![](images/iot-high-level.svg)
 
 
 
