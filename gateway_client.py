@@ -6,30 +6,10 @@ import wiotp.sdk.gateway
 
 ANDROID_DEVICE_TYPE = "Android"
 
-def eventPublishCallback():
-    print("Device Publish Event done!!!")
-
-
-def myEventCallback(event):
-    str = "%s event '%s' received from device [%s]: %s"
-    print(str % (event.format, event.eventId, event.device, json.dumps(event.data)))
-
-
-def myCommandCallback(cmd):
-    print("Command received for %s:%s: %s" % (cmd.typeId, cmd.deviceId, cmd.data))
-
-
-def myStatusCallback(status):
-    if status.action == "Disconnect":
-        str = "%s - device %s - %s (%s)"
-        print(str % (status.time.isoformat(), status.device, status.action, status.reason))
-    else:
-        print("%s - %s - %s" % (status.time.isoformat(), status.device, status.action))
-
 
 def get_gateway_cilent(config_file_path):
     config = wiotp.sdk.gateway.parseConfigFile(config_file_path)
-    client = wiotp.sdk.gateway.GatewayClient(config=config, logHandlers=None)
+    client = wiotp.sdk.gateway.ManagedGatewayClient(config=config, logHandlers=None)
     return client
 
 
