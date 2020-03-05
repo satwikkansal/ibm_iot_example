@@ -20,7 +20,7 @@ def send_gateway_status():
     send_status_event(client)
 
 
-@tl.job(interval=timedelta(seconds=1))
+@tl.job(interval=timedelta(milliseconds=200))
 def send_device_readings():
     for device_addr, data in devices_data.items():
         send_android_device_event(client, device_addr, "status", data)

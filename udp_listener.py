@@ -1,6 +1,5 @@
 import socket
 from struct import unpack_from
-import time
 
 UDP_IP = "0.0.0.0"
 UDP_PORT = 6000
@@ -32,7 +31,7 @@ def listen_sensor_data():
         data = process_data(data)
         yield data, addr
 
-#
+
 # prev_data = {}
 #
 # def has_changed(data, address):
