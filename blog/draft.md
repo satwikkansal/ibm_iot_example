@@ -191,7 +191,7 @@ We're sending the current CPU and memory utilization as the message data in the 
 
 ### 6. Connect the device to the gateway
 
-Now it's our smartphone's turn to be part of the system. As mentioned before, we're going to connect the smartphone to the gateway over the UDP socket. The SensorUDP app provides support for Accelerometer, Gyroscope, Magnetometer, Light, and Proximity sensors, but not all devices have all of these sensors (like my old Android device doesn't have Gyroscope and Magnetometer), so some data might be missing.
+Now let's add the smartphone device to the system. As mentioned before, we're going to connect the smartphone to the gateway over the UDP socket. The SensorUDP app provides support for Accelerometer, Gyroscope, Magnetometer, Light, and Proximity sensors, but not all devices have all of these sensors (like my old Android device doesn't have Gyroscope and Magnetometer), so some data might be missing.
 
 We'll have to implement the functionality to listen to smartphone data over sockets at our gateway, the code for it is as follows,
 
@@ -249,7 +249,7 @@ After the smartphone starts sending data, you should see output logs similar to 
 {'x_acc': -0.01315280981361866, 'y_acc': 0.034984588623046875, 'z_acc': -0.01422119140625, 'x_gravity': 0.0, 'y_gravity': 0.0, 'z_gravity': 0.0, 'x_rotation': 0.0, 'y_rotation': 0.0, 'z_rotation': 0.0, 'x_orientation': 0.0, 'y_orientation': 0.0, 'z_orientation': 0.0, 'deprecated_1': 0.0, 'deprecated_2': 0.0, 'ambient_light': 56.0, 'proximity': 100.0, 'keyboard_button_pressed': 0.0} ('172.20.10.4', 42048)
  ```
 
-Note: Make sure to connect the smartphone and the gateway device to the same network for this to work. For better security, you can add provisions like SSL, Firewall, and static IP whitelisting.
+Note: Make sure to connect the smartphone and the gateway device to the same network for this to work. For better security, you can add provisions like SSL, Firewall, and IP whitelisting.
 
 ![image-20200305164228934](images/image-20200305164228934.png)
 
@@ -258,6 +258,7 @@ Note: Make sure to connect the smartphone and the gateway device to the same net
 Now that we have the data coming from the device in our gateway, the only task that's left is to publish it to the broker in the cloud. The gateways are allowed to publish events on behalf of devices connected to them. Also, when a privileged gateway publishes an event on behalf of a device for the first time, the IBM IoT cloud platform will register that device. This is known as auto-provisioning of devices. There's also a mechanism to [bulk register devices using REST](https://developer.ibm.com/recipes/tutorials/bulk-register-devices-to-the-ibm-watson-iot-platform-using-rest/) APIs. But since we've just one device, we'll proceed with a former way for now, here's the code,
 
 ```python
+# File gateway_client.py
 ANDROID_DEVICE_TYPE = "Android"
 
 def send_android_device_event(client, device_id, eventId, data):
@@ -274,13 +275,13 @@ After you start publishing the events, the sensor readings should reflect on you
 
 ![image-20200305164453464](images/image-20200305164453464.png)
 
-With this, basic infrastructure is set up. Next, we'll see different things that we can try using this infrastructure,
+With this, the basic infrastructure is set up. Next, we'll see different things that we can do with this infrastructure,
 
 ## Exploring different ideas
 
 ### Edge computing: Filtering and aggregating data at the edge
 
-You might have noticed that the smartphone streams the sensor data at a quite fast pace, and the data is sent to the cloud broker as is. One nice thing to do would be to send the data to the cloud broker at a slower rate. The following code implements this mechanism using the [timeloop](https://pypi.org/project/timeloop/) library (which internally uses Python's [threading](https://docs.python.org/3/library/threading.html) module).
+You might have noticed that the smartphone streams the sensor data at a fast pace, and the data is sent to the cloud broker as is. One nice thing to do would be to send the data to the cloud broker at a slower rate. The following code implements this mechanism using the [timeloop](https://pypi.org/project/timeloop/) library (which internally uses Python's [threading](https://docs.python.org/3/library/threading.html) module).
 
 ```python
 # File main.py
@@ -315,17 +316,18 @@ for data, device_addr in listen_sensor_data():
     devices_data[device_addr[0]] = data
 ```
 
-Few things to observe,
+In the above snippet,
 
 - We're publishing the gateway status updates (CPU and memory utilization data) every 5 seconds.
 - We're publishing the device data every 200 milliseconds.
-- The script will work for multiple devices as well since we're distinguishing devices based on their host address. 
 
-One might be only concerned about eventful changes in sensor readings, so the above logic can further be extended into publishing the data only when there's a substantial change in the values as compared to the previous ones. All these techniques will help ease the computational overhead at the cloud, save network bandwidth, and can be called as Edge computing techniques.
+The snippet will work for multiple devices as well since we're distinguishing devices based on their host address. 
+
+Since one might be only concerned about eventful changes in sensor readings, the above logic can further be extended into publishing the data only when there's a substantial change in the values as compared to the previous ones. Such techniques will help ease the computational overhead at the cloud, save network bandwidth, and can be considered a part of Edge computing.
 
 ### Visualizations
 
-We can use the IBM IoT platform for visualizing the data being sent to the cloud. Different visualizations of data will help us provide a clearer picture of what has happened. To create visualizations, you can go to your IoT platform dashboard, select to create a new board, and follow the below steps,
+Different visualizations of data will help us provide a clearer picture of what has happened. We can use the IBM IoT platform for visualizing the data being sent to the cloud. To create visualizations, you can go to your IoT platform dashboard, select to create a new board, and follow the below steps,
 
 ![image-20200305165146359](images/image-20200305165146359.png)
 
@@ -343,7 +345,7 @@ We can use the IBM IoT platform for visualizing the data being sent to the cloud
 
 - Configure the appearance of the card, by entering size, color, and title for the card, and then click **Submit** to add the card to the board. 
 
-I played around with different visualizations to create the following board,
+I played around with different kinds visualizations to create the following board,
 
 ![image-20200305172237024](images/image-20200305172237024.png)
 
@@ -358,21 +360,24 @@ The wiotp-sdk provides an abstraction for application clients with functionaliti
 
 import wiotp.sdk.application
 
-options = config = wiotp.sdk.application.parseConfigFile("app_config.yml")
-app_client = wiotp.sdk.application.ApplicationClient(options)
-
-app_client.connect()
+def get_gateway_cilent(config_file_path):
+    config = wiotp.sdk.gateway.parseConfigFile(config_file_path)
+    client = wiotp.sdk.gateway.ManagedGatewayClient(config=config, logHandlers=None)
+    return client
 
 def send_reset_command(client, type, id):
   data = {'reset': True}
   client.publishCommand(type, id, "reset", "json", data)
-  
+
+
+app_client = get_gateway_cilent("app_config.yml")
+app_client.connect()
 send_reset_command(app_client, 'raspi', 'raspi-1')
 ```
 
-This application connects directly to the cloud and resides at a different location than the gateway. The simple command we send to the gateway here is instructing it to reset (clear all the data it has). Of course, this is a naive use-case, but you can extend it to do something more useful like restarting the device, changing the rate at which data is sent, etc.
+Above we initialize an application client that connects directly to the cloud and resides at a different location than the gateway. We use the application client to send a simple command to the gateway instructing it to reset. Of course, it's naive use-case, but you can extend it to do something more useful like restarting the device, changing the rate at which data is sent, etc.
 
-Just like the gateway config, you can specify the application config in a YAML file, which should be similar to the one below,
+Just like the gateway config, we'll specify the application config in a YAML file,
 
 ```yaml
 # app_config.yml
@@ -386,7 +391,7 @@ options:
     logLevel: debug
 ```
 
-The key and the token for the application can be generated by clicking the **Generate API Key** button in the Apps section of your IoT Dashboard. I've assigned the role to be Backend Trusted application. 
+The key and the token for the application (is different from the one that we used for the gateway client) can be generated by clicking the **Generate API Key** button in the Apps section of your IoT Dashboard. I've assigned the role to be Backend Trusted application. 
 
 ![image-20200305173902468](images/image-20200305173902468.png)
 
@@ -394,22 +399,28 @@ The key and the token for the application can be generated by clicking the **Gen
 
 Add the key and the auth token you get on the next screen to your application_config.yml file. 
 
-The above implementation suffices for the application side, but what about the gateway? How should the gateway handle the command? For that, we need to add the following logic at our gateway,
+The above implementation suffices for the application side, but what about the gatewat? How should the gateway handle the command? We need to add the following logic at our gateway,
 
 ```python
-# main.py
-
+# File main.py contd..
 def gateway_command_callback(cmd):
     print("Command received for {}:{}: {}".format(cmd.typeId, cmd.deviceId, cmd.data))
     if cmd.typeId == 'reset':
-      devices_data = {}
+        reset_data(devices_data)
     else:
-      print("Unknow command type received")
+        print("Unknown command type received")
+
+
+def reset_data():
+    devices_data.clear()
+    # Add more custom logic here.
+    pass
+
 
 # Subscribing to commands
-gateway_client.subscribeToCommands(self, commandId="reset"):
+client.subscribeToCommands(self, commandId="reset"):
 # Registering a callback 
-gateway_client.commandCallback = gateway_command_callback
+client.commandCallback = gateway_command_callback
 ```
 
 Above, we've registered a callback function that gets fired every time the gateway client receives a command. The command can then be handled based on its ID and the data being sent. In a similar manner as discussed above, commands can also be sent to the devices.
@@ -445,51 +456,65 @@ It might take some time to provision. We then need to get to the service dashboa
 Once we have the credentials, we can create bind the application client to the Cloudant service and configure connector, destination, and rules to send the events to the cloudant database. Following is the code for that,
 
 ```python
-# Service Credentials From the Cloudant DB dashboard
-cloudant_creds = {
+# File application.py
+
+CLOUDANT_CREDS = {
   "apikey": "your_api_key_here",
-  "host": "7fe82452-66d6-460b-afd6-69bf8f4bc8e-bluemix.cloudantnosqldb.appdomain.cloud",
-  "password": "pwd_here",
+  "host": "eeca8e52-1774-4698-93d1-cafa434762ac-bluemix.cloudantnosqldb.appdomain.cloud",
+  "password": "your_pwd_here",
   "port": 443,
-  "username": "username_here"
+  "username": "your_username_here"
 }
 
-service_binding = {
+SERVICE_BINDING = {
     "name": "any-binding-name",
     "description": "Test Cloudant Binding",
     "type": "cloudant",
-    "credentials": cloudant_creds
+    "credentials": CLOUDANT_CREDS
 }
 
-# Bind application to the cloudant DB
-cloudant_service = app_client.serviceBindings.create(service_binding)
+ANDROID_DEVICE_TYPE = "Android"
+GATEWAY_DEVICE_TYPE = "raspi"
+STATUS_EVENT_TYPE = "status"
 
-# Create the connector
-connector = app_client.dsc.create(
-    name="connector_1", type="cloudant", serviceId=cloudant_service.id, timezone="UTC",
-    description="Data connector", enabled=True
-)
 
-# Create a destination under the connector
-destination_1 = connector.destinations.create(name="sensor-data", bucketInterval="DAY")
+def get_application_client(config_file_path):
+    config = wiotp.sdk.application.parseConfigFile(config_file_path)
+    app_client = wiotp.sdk.application.ApplicationClient(config)
+    return app_client
 
-# Create a rule under the connector, that routes all Android status events to the destination
-rule_1 = connector.rules.createEventRule(
-    name="status_events", destinationName=destination_1.name, typeId="Android", eventId="status",
-    description="Send android status events", enabled=True
-)
 
-# Create another destination under the connector
-destination_2 = connector.destinations.create(name="gateway-data", bucketInterval="DAY")
+def create_cloudant_connections(client, service_binding):
+    # Bind application to the Cloudant DB
+    cloudant_service = client.serviceBindings.create(service_binding)
+    
+    # Create the connector
+    connector = client.dsc.create(
+        name="connector_1", type="cloudant", serviceId=cloudant_service.id, timezone="UTC",
+        description="Data connector", enabled=True
+    )
+    
+    # Create a destination under the connector
+    destination_1 = connector.destinations.create(name="sensor-data", bucketInterval="DAY")
+    
+    # Create a rule under the connector, that routes all Android status events to the destination
+    connector.rules.createEventRule(
+        name="status_events", destinationName=destination_1.name, typeId=ANDROID_DEVICE_TYPE, eventId=STATUS_EVENT_TYPE,
+        description="Send android status events", enabled=True
+    )
+    
+    # Create another destination under the connector
+    destination_2 = connector.destinations.create(name="gateway-data", bucketInterval="DAY")
+    
+    # Create a rule under the connector, that routes all raspi status events to the destination
+    connector.rules.createEventRule(
+        name="status_events", destinationName=destination_2.name, typeId=GATEWAY_DEVICE_TYPE, eventId=STATUS_EVENT_TYPE,
+        description="Gateway status events", enabled=True)
 
-# Create a rule under the connector, that routes all raspi status events to the destination
-rule_2 = connector.rules.createEventRule(
-    name="status_events", destinationName=destination_2.name, typeId="raspi", eventId="status",
-    description="Gateway status events", enabled=True
-)
+create_cloudant_connections(app_client, SERVICE_BINDING)
 ```
 
-You can read in detail about bindings, connectors, destination, and rules [here](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dsc/index.html). In brief, what we did above was configured our application with the cloudant service in such a way that all the 'Android' status events go to a separate historian database, and all the 'raspi' status events to another historian database, both of which are bucket by the interval of a day. 
+You can read in detail about bindings, connectors, destination, and rules [here](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dsc/index.html). In brief, what we did above was configured our application with the cloudant service in such a way that all the 'Android' status events go to a separate historian database, and all the 'raspi' status events to another historian database, both of which are bucketed by the interval of a day. 
 
 If you go to the Cloudant service dashboard after setting up these rules through the wiotp-sdk, you'll see a few generated databases like this,
 
@@ -532,7 +557,9 @@ The data saved into Cloudant can be used for advanced analytics. Let's see an ex
 Run the following code in the notebook, 
 
 ```python
+# The Watson studio notebook cell
 !pip install --upgrade pixiedust
+
 import pixiedust
 
 username = credentials_1["username"]
@@ -560,13 +587,15 @@ Now we have all the Android events data available as a PySpark dataframe object,
 
 ### Other things to try
 
-**Device Simulations:** Just in case you don't have the device or want to simulate specific scenarios, you can use the Simulation feature provided by the IBM IoT platform. Go to the settings page from the IoT platform, and select **Activate Device Simulator**. After that, you can follow [this documentation](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dashboard/device_sim.html) to know specifics of how to simulate various scenarios.
+Here are few more things that you can do,
+
+- **Device Simulations:** Just in case you don't have the device or want to simulate specific scenarios, you can use the Simulation feature provided by the IBM IoT platform. Go to the settings page from the IoT platform, and select **Activate Device Simulator**. After that, you can follow [this documentation](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dashboard/device_sim.html) to know specifics of how to simulate various scenarios.
 
 ![image-20200305135959217](images/image-20200305135959217.png)
 
-**Device interfaces and Notifications:** If you want to monitor the events data and to trigger an action when a certain condition is met, you can set up a Logical device interface and notification rules. Once set up, you can subscribe to these MQTT notification topics in your application and take appropriate actions when they're triggered. [This article](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/embeddedrules/index.html) covers how to implement it in detail. 
+- **Device interfaces and Notifications:** If you want to monitor the events data and to trigger an action when a certain condition is met, you can set up a Logical device interface and notification rules. Once set up, you can subscribe to these MQTT notification topics in your application and take appropriate actions when they're triggered. [This article](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/embeddedrules/index.html) covers how to implement it in detail. 
 
-**Create your own web-interface:** We used our application script to create connectors and publish device commands. We used the platform to visualize the data and send actions. But all this functionality can also be provided via a higher-level web interface. The application client can subscribe to Device events to get the data, can publish commands, so there's a lot of scope to implement things from scratch. The web interface you develop can be deployed to IBM Cloud using [Cloud Foundry](https://www.ibm.com/cloud/cloud-foundry) service. 
+- **Create your own web-interface:** We used our application script to create connectors and publish device commands. We used the platform to visualize the data and send actions. But all this functionality can also be provided via a higher-level web interface. The application client can subscribe to Device events to get the data, can publish commands, so there's a lot of scope to implement things from scratch. The web interface you develop can be deployed to IBM Cloud using [Cloud Foundry](https://www.ibm.com/cloud/cloud-foundry) service. 
 
  And here are some ideas to extend our present naive door monitoring system so far, 
 
@@ -577,4 +606,4 @@ Now we have all the Android events data available as a PySpark dataframe object,
 
 ## Conclusion
 
-In this post, we discussed various components of a typical IoT architecture. Though IoT is a vast topic and its use-cases spread across multiple domains, the knowledge of different concepts we discussed will enable you to get going with most of the use-cases using IBM Cloud.
+In this post, we discussed various components of a typical IoT system. Though IoT is a vast topic and its use-cases spread across multiple domains, the knowledge of different concepts discussed in this post will enable you to get going with most of the IoT use-cases with IBM Cloud.
