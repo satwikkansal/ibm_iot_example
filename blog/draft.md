@@ -1,14 +1,14 @@
 # Developing an IoT system with IBM Cloud
 
-This article walks through different components involved in a typical IoT project through a simple IoT project. We'll cover various aspects of an IoT system like architecture-design, analytics, security, and device management.
+This article walks through different components involved in a typical IoT system while implementing a simple IoT project. We'll cover some important aspects of an IoT system like architecture-design, analytics, security, and device management.
 
-**Prerequisites**: The code snippets in the article assume familiarity with Python and a basic understanding of network protocols. 
+**Prerequisites**: The code snippets assume familiarity with Python and a basic understanding of network protocols. 
 
-## About the applicaiton 
+## About the project 
 
-The application that we're trying to set the infrastructure for in the post is a door-monitoring-system. Since this post is more oriented towards architecture and design, to minimize fiddling with hardware, pins, and wires, we'll be simply using a smartphone device as a proxy for the collection of discrete hardware sensors. I have an old android phone, which consists of Accelerometer, Proximity Sensor, and light intensity sensor. Most smartphones (even the quite old ones) will have these basic sensors. That's why a real smartphone will serve as a good alternative for actual sensors for this post. 
+The IoT project that we'll attempt to build is a Door Monitoring System. The post will be more oriented towards architecture and design, and to minimize fiddling with hardware, pins, and wires, we'll use a smartphone device as a proxy for the collection of discrete hardware sensors. I'll use my old Android phone during development, which consists of Accelerometer, Proximity Sensor, and light intensity sensor. Most smartphones (even the quite old ones) will have these basic sensors. That's why a real smartphone will serve as a good alternative for actual sensors. 
 
-Our door-monitoring-system comprises of the sensor (smartphone) attached to the doors, which will keep recording different parameters value. These sensor values can be used to trigger different actions, and the collected data can be used for analytics.
+Our Door Monitoring System comprises of the sensor (smartphone) attached to the doors, which will keep recording different parameters value. These values can be used to trigger different actions, and the collected data can be used to perform analytics.
 
 ## The IoT architecture
 
