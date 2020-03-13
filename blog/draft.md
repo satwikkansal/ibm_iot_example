@@ -6,9 +6,11 @@ This article walks through different components involved in a typical IoT system
 
 ## About the project 
 
-The IoT project that we'll attempt to build is a Door Monitoring System. The post will be more oriented towards architecture and design, and to minimize fiddling with hardware, pins, and wires, we'll use a smartphone device as a proxy for the collection of discrete hardware sensors. I'll use my old Android phone during development, which consists of Accelerometer, Proximity Sensor, and light intensity sensor. Most smartphones (even the quite old ones) will have these basic sensors. That's why a real smartphone will serve as a good alternative for actual sensors. 
+In the [Get started developing IoT solutions by building a simple home automation system](https://developer.ibm.com/tutorials/iot-lp101-get-started-develop-iot-home-automation/) tutorial, we assembeled a door mointoring device using multiple sensors connected to a raspberry-pi, used Node-RED to design IoT flows, and Apple HomeKit framework to monitor the system using an iOS application. The approach we adopted inovlved little to no code. 
 
-Our Door Monitoring System comprises of the sensor (smartphone) attached to the doors, which will keep recording different parameters value. These values can be used to trigger different actions, and the collected data can be used to perform analytics.
+In this project, we'll try to build a similar system but with a different focus. We'll dive deep into the code and focus on architecture-design, analytics, security and other aspects of an IoT system. To minimize fiddling with hardware and wires, we'll use a smartphone device in this projecct as a proxy for the collection of discrete hardware sensors. I'll use my old Android phone during development, which consists of Accelerometer, Proximity Sensor, and light intensity sensor. Most smartphones (even the quite old ones) will have these basic sensors. That's why a real smartphone will serve as a good alternative for actual sensors. 
+
+Our Door Monitoring System comprises of the sensor (smartphone) attached to the doors, which will continuously record different sensor readings. These readings can be used to trigger different actions, and the collected data can be used to perform analytics.
 
 ## The IoT architecture
 
@@ -33,9 +35,7 @@ We'll be using a single smartphone device in our project implementation. But we'
 
 ## The IoT protocols
 
-As mentioned earlier, in an IoT system there may be heterogeneous devices using different protocols to communicate with the gateway. The most prevalent protocol however, in the IoT world is MQTT (MQ Telemetry Transport). The "MQ" in "MQTT" comes from IBM's [MQ](https://www.ibm.com/in-en/products/mq) product line. 
-
-MQTT is a machine to machine messaging protocol. It is designed to be lightweight and fast, keeping in mind the power and resource constraints of a typical IoT device. The protocol runs over TCP-IP and operates on the publish-subscribe model. The key entities in a functional MQTT system are,
+As mentioned earlier, in an IoT system there may be heterogeneous devices using different protocols to communicate with the gateway. The most prevalent protocol however, in the IoT world is MQTT (MQ Telemetry Transport. MQTT is a machine to machine messaging protocol. It is designed to be lightweight and fast, keeping in mind the power and resource constraints of a typical IoT device. The protocol runs over TCP-IP and operates on the publish-subscribe model. The key entities in a functional MQTT system are,
 
 - MQTT client
 - Message broker
@@ -43,7 +43,7 @@ MQTT is a machine to machine messaging protocol. It is designed to be lightweigh
 
 The clients communicate with the broker (not directly with each other), where they can publish messages or subscribe to hierarchical message topics. Topics are used to segregate different data. You can read more about how MQTT works in the [Getting to know MQTT](https://developer.ibm.com/articles/iot-mqtt-why-good-for-iot/) article.
 
-MQTT is not the only protocol; there are other communication protocols as well like [ XMPP](https://en.wikipedia.org/wiki/XMPP) (an XML-based chat protocol),[ CoAP](https://tools.ietf.org/html/rfc7252) (Constrained Application Protocol), web-sockets, or higher-level device-management oriented protocols like LMW2M, OMA-DM, and TR-069.
+MQTT is not the only protocol; there are other communication protocols as well like [ XMPP](https://en.wikipedia.org/wiki/XMPP) (an XML-based chat protocol), [CoAP](https://tools.ietf.org/html/rfc7252) (Constrained Application Protocol), web-sockets, or higher-level device-management oriented protocols like [LWM-2M](https://en.wikipedia.org/wiki/OMA_LWM2M), [OMA-DM](https://openmobilealliance.org/wp/Overviews/dm_overview.html), and [TR-069](https://www.broadband-forum.org/wp-content/uploads/2018/11/TR-069.pdf).
 
 ### Protocols for our Application
 
@@ -275,13 +275,9 @@ After you start publishing the events, the sensor readings should reflect on you
 
 ![image-20200305164453464](images/image-20200305164453464.png)
 
-With this, the basic infrastructure is set up. Next, we'll see different things that we can do with this infrastructure,
+### 8. Edge computing: Filtering and aggregating data at the edge
 
-## Exploring different ideas
-
-### Edge computing: Filtering and aggregating data at the edge
-
-You might have noticed that the smartphone streams the sensor data at a fast pace, and the data is sent to the cloud broker as is. One nice thing to do would be to send the data to the cloud broker at a slower rate. The following code implements this mechanism using the [timeloop](https://pypi.org/project/timeloop/) library (which internally uses Python's [threading](https://docs.python.org/3/library/threading.html) module).
+The smartphone streams the sensor data at a fast pace, and the data is sent to the cloud broker as is. Let's try to send this data to the cloud broker at a slower rate. The following code implements such mechanism using the [timeloop](https://pypi.org/project/timeloop/) library (which internally uses Python's [threading](https://docs.python.org/3/library/threading.html) module).
 
 ```python
 # File main.py
@@ -299,11 +295,13 @@ tl = Timeloop()
 devices_data = {}
 
 
+# Job that runs every 5 seconds
 @tl.job(interval=timedelta(seconds=5))
 def send_gateway_status():
     send_status_event(client)
 
 
+# Job that runs every 200 milliseconds
 @tl.job(interval=timedelta(milliseconds=200))
 def send_device_readings():
     for device_addr, data in devices_data.items():
@@ -321,13 +319,11 @@ In the above snippet,
 - We're publishing the gateway status updates (CPU and memory utilization data) every 5 seconds.
 - We're publishing the device data every 200 milliseconds.
 
-The snippet will work for multiple devices as well since we're distinguishing devices based on their host address. 
+Since we're distinguishing devices based on their host address, the above snippet will work for multiple devices too. The above logic can futher be extended by only publishing the event when there's a substantial change in the values as compared to the previous ones. Such techniques help ease the computational overhead at the cloud, save network bandwidth, and can be considered a part of Edge computing.
 
-Since one might be only concerned about eventful changes in sensor readings, the above logic can further be extended into publishing the data only when there's a substantial change in the values as compared to the previous ones. Such techniques will help ease the computational overhead at the cloud, save network bandwidth, and can be considered a part of Edge computing.
+### 9. Visualizing the data
 
-### Visualizations
-
-Different visualizations of data will help us provide a clearer picture of what has happened. We can use the IBM IoT platform for visualizing the data being sent to the cloud. To create visualizations, you can go to your IoT platform dashboard, select to create a new board, and follow the below steps,
+Different visualizations of data help us provide a clearer picture of the events that have happend. Let's use the IBM IoT platform for visualizing the data being sent to the cloud. To create visualizations, you can go to your IoT platform dashboard, select to create a new board, and follow the steps below,
 
 ![image-20200305165146359](images/image-20200305165146359.png)
 
@@ -345,15 +341,17 @@ Different visualizations of data will help us provide a clearer picture of what 
 
 - Configure the appearance of the card, by entering size, color, and title for the card, and then click **Submit** to add the card to the board. 
 
-I played around with different kinds visualizations to create the following board,
+I played around with different kinds visualizations (Gauge, Line chart, Semaphores, etc.) to create the following board. A quick glance at the board gives the Bird's eye view of the system. 
 
 ![image-20200305172237024](images/image-20200305172237024.png)
 
-### Sending commands
+
+
+### 10. Sending commands and information to the devices
 
 The infrastructure that we've set up so far transmits the data only in one direction (from device to gateway to the cloud). But what if we want to send the data in another direction? What if we want to send instructions to the device to act in a certain way? This can be done through commands. Commands are nothing but MQTT messages that are sent from the cloud/application layer back to the lower layers. 
 
-The wiotp-sdk provides an abstraction for application clients with functionalities to send commands to the devices or gateways. The following code snippet walks through one such use-case implementation,
+The wiotp-sdk provides an abstraction for application clients (the application layer in our three-tier architecture) with functionalities to send commands to the devices or gateways. The following code snippet walks through one such use-case implementation,
 
 ```python
 # File application.py
@@ -375,7 +373,7 @@ app_client.connect()
 send_reset_command(app_client, 'raspi', 'raspi-1')
 ```
 
-Above we initialize an application client that connects directly to the cloud and resides at a different location than the gateway. We use the application client to send a simple command to the gateway instructing it to reset. Of course, it's naive use-case, but you can extend it to do something more useful like restarting the device, changing the rate at which data is sent, etc.
+Above we initialize an application client that connects directly to the cloud and resides at a different location than the gateway. We use the application client to send a simple command to the gateway instructing it to reset. It's naive use-case, but you can extend it to do more useful things like restarting the device, changing the rate at which data is sent, etc.
 
 Just like the gateway config, we'll specify the application config in a YAML file,
 
@@ -391,15 +389,17 @@ options:
     logLevel: debug
 ```
 
-The key and the token for the application (is different from the one that we used for the gateway client) can be generated by clicking the **Generate API Key** button in the Apps section of your IoT Dashboard. I've assigned the role to be Backend Trusted application. 
+The key and the token for the application (is different from the one that we used for the gateway client) can be generated by clicking the **Generate API Key** button in the Apps section of your IoT Dashboard.
 
 ![image-20200305173902468](images/image-20200305173902468.png)
 
+ I've assigned the Role to be 'Backend Trusted application',
+
 ![image-20200305173920190](images/image-20200305173920190.png)
 
-Add the key and the auth token you get on the next screen to your application_config.yml file. 
+Copy the key and the auth token you get on the next screen and add them to your `application_config.yml` file. 
 
-The above implementation suffices for the application side, but what about the gatewat? How should the gateway handle the command? We need to add the following logic at our gateway,
+The above implementation suffices for the application side, but what about the gateway? How should the gateway handle the command? We need to add the following logic at our gateway,
 
 ```python
 # File main.py contd..
@@ -417,19 +417,21 @@ def reset_data():
     pass
 
 
-# Subscribing to commands
-client.subscribeToCommands(self, commandId="reset"):
+# Subscribing to specific command
+# client.subscribeToCommands(self, commandId="reset")
+# Subscribing to all commands being sent to the gateway 
+client.subscribeToCommands(self)
 # Registering a callback 
 client.commandCallback = gateway_command_callback
 ```
 
 Above, we've registered a callback function that gets fired every time the gateway client receives a command. The command can then be handled based on its ID and the data being sent. In a similar manner as discussed above, commands can also be sent to the devices.
 
-### Device management
+### 11. Device management
 
 A complex IoT system might contain many devices, so it is helpful to include device management capabilities in the architecture. IoT devices are often deployed in hostile environments. They need to be monitored actively, and when they fail, they might need to be retired or updated so that they can continue to operate in those environments. Device management capabilities allow IoT developers to control IoT devices by performing operations like resetting them to factory defaults or applying updates to patch security issues or fix bugs.
 
-You can use the IBM Watson IoT Platform device management protocol to configure your IoT devices as [managed devices](https://cloud.ibm.com/docs/services/IoT/devices/device_mgmt/index.html#index) (we've so far been working with unmanaged devices), which allows the devices to be rebooted, to be reset to factory defaults, or for firmware to be downloaded or upgraded remotely. Managed devices implement the [Device Management Protocol](https://cloud.ibm.com/docs/services/IoT/devices/device_mgmt/index.html), which is built on MQTT. The wiotp-sdk also provides separate clients for [Managed devices](https://ibm-watson-iot.github.io/iot-python/device/managed/) and [Managed gateways](https://ibm-watson-iot.github.io/iot-python/gateway/managed/) for convenience (i.e., we can simply use `wiotp.sdk.gateway.ManagedGatewayClient` instead of `wiotp.sdk.gateway.GatewayClient`) which will allow you to trigger device management actions through the IBM cloud IoT dashboard. Just like command handling, you'll need to set up callbacks to handle the device management actions.
+We can use the IBM Watson IoT Platform device management protocol to configure your IoT devices as [managed devices](https://cloud.ibm.com/docs/services/IoT/devices/device_mgmt/index.html#index) (we've so far been working with unmanaged devices), which allows the devices to be rebooted, to be reset to factory defaults, or for firmware to be downloaded or upgraded remotely. Managed devices implement the [Device Management Protocol](https://cloud.ibm.com/docs/services/IoT/devices/device_mgmt/index.html), which is built on MQTT. The wiotp-sdk also provides separate clients for [Managed devices](https://ibm-watson-iot.github.io/iot-python/device/managed/) and [Managed gateways](https://ibm-watson-iot.github.io/iot-python/gateway/managed/) for convenience (i.e., we can simply use `wiotp.sdk.gateway.ManagedGatewayClient` instead of `wiotp.sdk.gateway.GatewayClient`) which will allow you to trigger device management actions through the IBM cloud IoT dashboard. Just like command handling, you'll need to set up callbacks to handle the device management actions.
 
 After registering a managed device, the Device Actions section on the device detail page in the Watson IoT Platform dashboard is automatically updated to include buttons that can be used to trigger these device actions.
 
@@ -443,17 +445,19 @@ Also, a log of device actions that have been applied is available under the Acti
 
 ![image-20200305140507345](images/image-20200305140507345.png)
 
-### Storing data in a database
+### 12. Storing data in a database
 
-We can store the events in a [Cloudant](https://www.ibm.com/cloud/cloudant) NoSQL database for persistence and later analysis. To do that, we need to create a Cloudant DB  service by choosing **Cloudant NoSQL DB** from the IBM Cloud Catalog. Enter a name for the Cloudant service, select a region and plan and then press the ‘Create’ button. 
+What if we want to persist the data for later use? We can store the events in a [Cloudant](https://www.ibm.com/cloud/cloudant) NoSQL database. To do that, we'll create a Cloudant DB service by choosing **Cloudant NoSQL DB** from the IBM Cloud Catalog. The steps are below,
+
+1. Enter some name for the Cloudant service, select a region and plan and then press the ‘Create’ button. It might take some time to provision.
 
 ![image-20200305173440655](images/image-20200305173440655.png)
 
-It might take some time to provision. We then need to get to the service dashboard and generate Service credentials that'll be used in the application. 
+2. We then need to get to the service dashboard and generate Service credentials that'll be used in the application. 
 
 ![image-20200305173724444](images/image-20200305173724444.png)
 
-Once we have the credentials, we can create bind the application client to the Cloudant service and configure connector, destination, and rules to send the events to the cloudant database. Following is the code for that,
+3. Once we have the credentials, we can create bind the application client to the Cloudant service and configure connector, destination, and rules to send the events to the cloudant database. Following is the code for that,
 
 ```python
 # File application.py
@@ -526,9 +530,9 @@ And they'll contain all your events data in the form of documents,
 
 ![image-20200305175042440](images/image-20200305175042440.png)
 
-### Use the data for advanced analytics
+### 13. Use the data for advanced analytics
 
-The data saved into Cloudant can be used for advanced analytics. Let's see an example of how we can fetch this data in a Jupyter Notebook available in [Watson Studio](https://www.ibm.com/cloud/watson-studio), and write custom analytics techniques. Following are the steps to do that,
+The data saved into Cloudant can be used for advanced analytics. Let's fetch this data in a Jupyter Notebook available in [Watson Studio](https://www.ibm.com/cloud/watson-studio), where we can write custom logic for analytis. Following are the steps to do that,
 
 1. Go to the [**IBM Cloud Catalog**](https://cloud.ibm.com/catalog/) and under **AI**, select [**Watson™ Studio**](https://cloud.ibm.com/catalog/services/data-science-experience).
 2. Create the service. Select a region and choose **Lite** pricing plan. Enter a **Service name** and select a resource group.
@@ -538,23 +542,23 @@ The data saved into Cloudant can be used for advanced analytics. Let's see an ex
 
 ![image-20200305130959612](images/image-20200305130959612.png)
 
-6. We'll select Notebook, and there are other resources too that you can explore. Enter some name and description and select appropriate runtime. Watson Studio supports both Python and R environments. It also has support for Spark and Scala. Let's choose Spark with Python environment.
+6. We'll select Notebook, but there are other resources too that you can explore. Enter some name and description and select appropriate runtime. Watson Studio supports both Python and R environments. It also has support for Spark and Scala. Let's choose Spark with Python environment for now.
 
 ![image-20200305131502460](images/image-20200305131502460.png)
 
 7. To use our cloudant data, we need to add a connection resource to the project. To do that, go to the project page of Watson studio, click on **Add to project** again, and choose **Connection** asset this time, select your Cloudant service, and click on **Create**.
 
-   ![image-20200305132544009](images/image-20200305132544009.png)
+![image-20200305132544009](images/image-20200305132544009.png)
 
 ![image-20200305132644141](images/image-20200305132644141.png)
 
 ![image-20200305132841519](images/image-20200305132841519.png)
 
-9. Now in your notebook, you'll be able to see the cloudant service, click on credentials to insert them in a cell.
+8. Now in your notebook, you'll be able to see the cloudant service, click on credentials to insert them in a cell.
 
 ![image-20200305133155005](images/image-20200305133155005.png)
 
-Run the following code in the notebook, 
+9. Run the following code in the notebook, 
 
 ```python
 # The Watson studio notebook cell
@@ -585,19 +589,27 @@ Now we have all the Android events data available as a PySpark dataframe object,
 
 
 
-### Other things to try
+## Other things to explore 
 
 Here are few more things that you can do,
 
-- **Device Simulations:** Just in case you don't have the device or want to simulate specific scenarios, you can use the Simulation feature provided by the IBM IoT platform. Go to the settings page from the IoT platform, and select **Activate Device Simulator**. After that, you can follow [this documentation](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dashboard/device_sim.html) to know specifics of how to simulate various scenarios.
+### Device Simulations
+
+Just in case you don't have the device or want to simulate specific scenarios, you can use the Simulation feature provided by the IBM IoT platform. Go to the settings page from the IoT platform, and select **Activate Device Simulator**. After that, you can follow [this documentation](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/dashboard/device_sim.html) to know specifics of how to simulate various scenarios.
 
 ![image-20200305135959217](images/image-20200305135959217.png)
 
-- **Device interfaces and Notifications:** If you want to monitor the events data and to trigger an action when a certain condition is met, you can set up a Logical device interface and notification rules. Once set up, you can subscribe to these MQTT notification topics in your application and take appropriate actions when they're triggered. [This article](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/embeddedrules/index.html) covers how to implement it in detail. 
+### Device interfaces and Notifications
 
-- **Create your own web-interface:** We used our application script to create connectors and publish device commands. We used the platform to visualize the data and send actions. But all this functionality can also be provided via a higher-level web interface. The application client can subscribe to Device events to get the data, can publish commands, so there's a lot of scope to implement things from scratch. The web interface you develop can be deployed to IBM Cloud using [Cloud Foundry](https://www.ibm.com/cloud/cloud-foundry) service. 
+ If you want to monitor the events data and to trigger an action when a certain condition is met, you can set up a Logical device interface and notification rules. Once set up, you can subscribe to these MQTT notification topics in your application and take appropriate actions when they're triggered. [This article](https://www.ibm.com/support/knowledgecenter/SSQP8H/iot/platform/reference/embeddedrules/index.html) covers how to implement it in detail. 
 
- And here are some ideas to extend our present naive door monitoring system so far, 
+### Create your own web-interface
+
+We used our application script to create connectors and publish device commands. We used the platform to visualize the data and send actions. But all this functionality can also be provided via a higher-level web interface. The application client can subscribe to Device events to get the data, can publish commands, so there's a lot of scope to implement things from scratch. The web interface you develop can be deployed to IBM Cloud using [Cloud Foundry](https://www.ibm.com/cloud/cloud-foundry) service. 
+
+### Implement multiple use-cases for the door montionring system
+
+The infrastructure that we've set up will make it easy to try some of the following ideas,
 
 - Use the proximity sensor to trigger some events (Like greeting sound, turning on other devices connected to the gateway, and so on).
 - Monitor accelerometer readings, use some anomaly detection techniques to figure out how many times the door is opened throughout the day and other statistics.
