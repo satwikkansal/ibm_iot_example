@@ -358,17 +358,18 @@ The wiotp-sdk provides an abstraction for application clients (the application l
 
 import wiotp.sdk.application
 
-def get_gateway_cilent(config_file_path):
-    config = wiotp.sdk.gateway.parseConfigFile(config_file_path)
-    client = wiotp.sdk.gateway.ManagedGatewayClient(config=config, logHandlers=None)
-    return client
+
+def get_application_client(config_file_path):
+    config = wiotp.sdk.application.parseConfigFile(config_file_path)
+    app_client = wiotp.sdk.application.ApplicationClient(config)
+    return app_client
 
 def send_reset_command(client, type, id):
   data = {'reset': True}
   client.publishCommand(type, id, "reset", "json", data)
 
 
-app_client = get_gateway_cilent("app_config.yml")
+app_client = get_application_cilent("app_config.yml")
 app_client.connect()
 send_reset_command(app_client, 'raspi', 'raspi-1')
 ```
@@ -530,9 +531,9 @@ And they'll contain all your events data in the form of documents,
 
 ![image-20200305175042440](images/image-20200305175042440.png)
 
-### 13. Use the data for advanced analytics
+### 13. Use the data for custom analytics
 
-The data saved into Cloudant can be used for advanced analytics. Let's fetch this data in a Jupyter Notebook available in [Watson Studio](https://www.ibm.com/cloud/watson-studio), where we can write custom logic for analytis. Following are the steps to do that,
+Earlier we create a dashboard using various visualization card. Now let's say we want to use our data for custom anlytics. We can use the data stored in the Cloudant DB to do that. Let's fetch this data in a Jupyter Notebook available in [Watson Studio](https://www.ibm.com/cloud/watson-studio), where we can write custom logic for analytics. Following are the steps to do that,
 
 1. Go to the [**IBM Cloud Catalog**](https://cloud.ibm.com/catalog/) and under **AI**, select [**Watson™ Studio**](https://cloud.ibm.com/catalog/services/data-science-experience).
 2. Create the service. Select a region and choose **Lite** pricing plan. Enter a **Service name** and select a resource group.
@@ -587,7 +588,12 @@ Now we have all the Android events data available as a PySpark dataframe object,
 
 ![image-20200305133558999](images/image-20200305133558999.png)
 
+In the context of our door monitoring system, some ideas for custom analytics include,
 
+- Analyzing accelerometer and proximity sensor data to estimate out how many times the door is opened throughout the day.
+- Identifying the busiest times (and hotspots-doors in case of multiple-device-system) throughout the week.
+- Calculate various statistics, and metrics. Invoke other third party services or applicaitons (like [IFTTT](https://ifttt.com/)) based on these metrics.
+- Process the data and plot complex graphs that might not have been possible to generate through visualization cards in the IoT service.
 
 ## Other things to explore 
 
@@ -609,12 +615,12 @@ We used our application script to create connectors and publish device commands.
 
 ### Implement multiple use-cases for the door montionring system
 
-The infrastructure that we've set up will make it easy to try some of the following ideas,
+Apart from the use-cases discussed throughout the post, the infrastructure that we've set up will make it easy to try some of the following ideas,
 
 - Use the proximity sensor to trigger some events (Like greeting sound, turning on other devices connected to the gateway, and so on).
-- Monitor accelerometer readings, use some anomaly detection techniques to figure out how many times the door is opened throughout the day and other statistics.
 - Create your custom application and record other things like noise levels. Or maybe use discrete hardware sensors like temperature, humidity, light, etc. You can add a button in the application or a hardware buzzer that can serve as your doorbell.
 - Do some actions based on the light intensity, like turning on some light (connected to the network) when the intensity falls below a threshold.
+- Add multiple devices to the system to monitor multiple doors.
 
 ## Conclusion
 
