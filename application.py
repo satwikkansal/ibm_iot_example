@@ -58,3 +58,11 @@ def create_cloudant_connections(client, service_binding):
 def send_reset_command(client, type, id):
     data = {'reset': True}
     client.publishCommand(type, id, "reset", "json", data)
+
+
+app_client = get_gateway_cilent("app_config.yml")
+app_client.connect()
+
+# Call the functions like this
+# send_reset_command(app_client, 'raspi', 'raspi-1')
+
